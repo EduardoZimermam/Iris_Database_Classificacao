@@ -1,12 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import matplotlib.pyplot as plt
-from sklearn import datasets
-from mpl_toolkits.mplot3d import Axes3D
-from sklearn.decomposition import PCA
-from sklearn import tree
 import graphviz
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn import datasets
+from sklearn import tree
+from sklearn.decomposition import PCA
+from sklearn import naive_bayes
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import ShuffleSplit
 
 def plotDiagram2D(featA, featB, nameFeatA, nameFeatB):
 	x_min, x_max = X[:, featA].min() - .5, X[:, featA].max() + .5
@@ -15,7 +18,6 @@ def plotDiagram2D(featA, featB, nameFeatA, nameFeatB):
 	plt.figure('{} x {}'.format(nameFeatA, nameFeatB), figsize=(8, 6))
 	plt.clf()
 	
-	# Plot the training points
 	plt.scatter(X[:, featA], X[:, featB], c=y, cmap=plt.cm.Set1,
 	            edgecolor='k')
 	plt.xlabel(nameFeatA)
@@ -40,6 +42,36 @@ def plotDiagram3D(featA, featB, featC, nameFeatA, nameFeatB, nameFeatC):
 	ax.set_zlabel(nameFeatC)
 	ax.w_zaxis.set_ticklabels([])
 
+def treeDecision(criterionTree, nameFile, x, y):
+	clf = tree.DecisionTreeClassifier(criterion=criterionTree)
+	clf = clf.fit(x, y)
+
+	exp = y
+	pred = clf.predict(x)
+	
+	dot_data = tree.export_graphviz(clf, out_file=None, 
+	                     feature_names=iris.feature_names,  
+	                     class_names=iris.target_names,  
+	                     filled=True, rounded=True,  
+	                     special_characters=True)
+	
+	graph = graphviz.Source(dot_data) 
+	graph.render(nameFile) 
+
+	return exp, pred
+
+def getBases(train, test, X, y):
+	trainBase = []
+	testBase = []
+
+	for i in range(0, len(train)):
+		trainBase.append(X[i])
+
+	for i in range(0, len(test)):
+		testBase.append(y[i])
+
+	return trainBase, testBase
+
 # Load do dataset
 iris = datasets.load_iris()
 
@@ -48,43 +80,42 @@ X = iris.data[:, :4]
 y = iris.target
 
 # -------------- PARA PLOTAR OS GRÁFICOS 2D ----------------- #
-# plotDiagram2D(0, 1, 'Sepal length', 'Sepal width')
-# plotDiagram2D(0, 2, 'Sepal length', 'Petal length')
-# plotDiagram2D(0, 3, 'Sepal length', 'Petal width')
-# plotDiagram2D(1, 2, 'Sepal width', 'Petal length')
-# plotDiagram2D(1, 3, 'Sepal width', 'Petal width')
-# plotDiagram2D(2, 3, 'Petal length', 'Petal width')
+plotDiagram2D(0, 1, 'Sepal length', 'Sepal width')
+plotDiagram2D(0, 2, 'Sepal length', 'Petal length')
+plotDiagram2D(0, 3, 'Sepal length', 'Petal width')
+plotDiagram2D(1, 2, 'Sepal width', 'Petal length')
+plotDiagram2D(1, 3, 'Sepal width', 'Petal width')
+plotDiagram2D(2, 3, 'Petal length', 'Petal width')
 
 # # -------------- PARA PLOTAR OS GRÁFICOS 3D ----------------- #
-# plotDiagram3D(0, 1, 2, 'Sepal length', 'Sepal width', 'Petal length')
-# plotDiagram3D(0, 1, 3, 'Sepal length', 'Sepal width', 'Petal width')
-# plotDiagram3D(0, 2, 3, 'Sepal length', 'Petal length', 'Petal width')
-# plotDiagram3D(1, 2, 3, 'Sepal width', 'Petal length', 'Petal width')
+plotDiagram3D(0, 1, 2, 'Sepal length', 'Sepal width', 'Petal length')
+plotDiagram3D(0, 1, 3, 'Sepal length', 'Sepal width', 'Petal width')
+plotDiagram3D(0, 2, 3, 'Sepal length', 'Petal length', 'Petal width')
+plotDiagram3D(1, 2, 3, 'Sepal width', 'Petal length', 'Petal width')
 
-plt.show()
+# plt.show()
 
 # ------------------ ÁRVORE DE DECISÃO GINI ---------------------- #
 
-clf = tree.DecisionTreeClassifier(criterion='entropy')
-clf = clf.fit(iris.data, iris.target)
+expTree, predTree = treeDecision('gini', 'Gini_Tree_Decision', X, y)
 
-dot_data = tree.export_graphviz(clf, out_file=None, 
-                     feature_names=iris.feature_names,  
-                     class_names=iris.target_names,  
-                     filled=True, rounded=True,  
-                     special_characters=True)
+# ----------------- ÁRVORE DE DECISÃO ENTROPY --------------------- #
 
-graph = graphviz.Source(dot_data) 
-graph.render("entropy") 
+treeDecision('entropy', 'Entropy_Tree_Decision', X, y)
 
-clf = tree.DecisionTreeClassifier()
-clf = clf.fit(iris.data, iris.target)
+# ----------------- CLASSIFICADOR NAIVE BAYES --------------------- #
+gnb = naive_bayes.GaussianNB().fit(X, y)
 
-dot_data = tree.export_graphviz(clf, out_file=None, 
-                     feature_names=iris.feature_names,  
-                     class_names=iris.target_names,  
-                     filled=True, rounded=True,  
-                     special_characters=True)
+expNB = y
+predNB = gnb.predict(X)
+print("\nNúmero de pontos incorretamente rotulados em %d pontos : %d pontos"% (X.shape[0],(y != predNB).sum()))
 
-graph = graphviz.Source(dot_data) 
-graph.render("iris") 
+# ----------------- COMPARAÇÃO DE EFICÁCIA --------------------- #
+print("\nAcurácia da Árvore de decisão: {}%".format(accuracy_score(expTree, predTree)*100))
+print("Acurácia de Naive Bayes Gaussiano: {}%".format(accuracy_score(expNB, predNB)*100))
+print('\n')
+
+# --------------- EXECUÇÕES EM DOIS CENÁRIOS ------------ #
+rs = ShuffleSplit(5, 0.4, 0.6)
+for train, test in rs.split(X):
+	print("TRAIN:", train, "TEST:", test)
